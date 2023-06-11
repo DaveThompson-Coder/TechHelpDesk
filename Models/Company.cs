@@ -20,5 +20,8 @@ namespace TechHelpDesk.Models
         public virtual ICollection<HDUser> Members { get; set; }
         public virtual ICollection<Project> Projects { get; set; }
 
+        //Create a relationship to the invite
+
+
     }
 }

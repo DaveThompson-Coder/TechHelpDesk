@@ -56,8 +56,8 @@ namespace TechHelpDesk.Models
         public virtual Company Company { get; set; }
         public virtual ProjectPriority ProjectPriority { get; set; }
 
-        public virtual ICollection<HDUser> Members { get; set; } = new HashSet<HDUser>();            //Sets up one to many relationships
-        public virtual ICollection<Ticket> Tickets { get; set; } = new HashSet<Ticket>();
+        public virtual ICollection<HDUser> Members { get; set; } = new HashSet<HDUser>();  //Sets a many to many relationship with HDUser
+        public virtual ICollection<Ticket> Tickets { get; set; } = new HashSet<Ticket>();  //Sets a one to many relationship with Tickets
 
     }
 }
