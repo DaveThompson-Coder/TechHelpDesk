@@ -13,6 +13,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using TechHelpDesk.Data;
 using TechHelpDesk.Models;
+using TechHelpDesk.Services;
+using TechHelpDesk.Services.Interfaces;
 
 namespace TechHelpDesk
 {
@@ -39,6 +41,8 @@ namespace TechHelpDesk
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultUI()
                 .AddDefaultTokenProviders();
+
+            services.AddScoped<IHDRolesService, HDRolesService>();
 
             services.AddControllersWithViews();
         }

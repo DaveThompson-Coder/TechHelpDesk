@@ -15,7 +15,7 @@ namespace TechHelpDesk.Services.Interfaces
 
         public Task<bool> AddUserToRoleAsync(HDUser user, string roleName);     //Add user to Roles List  
 
-        public Task<bool> RemoveUserFromRoleAsync(HDUser user, IEnumerable<string> roleName);   //Remove user from a single Role
+        public Task<bool> RemoveUserFromRoleAsync(HDUser user, string roleName);   //Remove user from a single Role
 
         public Task<bool> RemoveUserFromRolesAsync(HDUser user, IEnumerable<string> roles);     //Remove user from multiple Roles
 
