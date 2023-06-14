@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Identity;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using TechHelpDesk.Data;
 using TechHelpDesk.Models;
 using TechHelpDesk.Services.Interfaces;
 
@@ -9,9 +11,23 @@ namespace TechHelpDesk.Services
 {
     public class HDRolesService : IHDRolesService
     {
-        public Task<bool> AddUserToRoleAsync(HDUser user, string roleName)
+        private readonly ApplicationDbContext _context;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly UserManager<HDUser> _userManager;
+        
+        public HDRolesService(ApplicationDbContext context,
+                              RoleManager<IdentityRole> roleManager,
+                              UserManager<HDUser> userManager)
         {
-            throw new NotImplementedException();
+            _context = context;
+            _roleManager = roleManager;
+            _userManager = userManager;
+        }
+
+        public async Task<bool> AddUserToRoleAsync(HDUser user, string roleName)
+        {
+            bool result = (await _userManager.AddToRoleAsync(user, roleName)).Succeeded;
+            return result;
         }
 
         public Task<string> GetRoleNameByIdAsync(string roleId)
