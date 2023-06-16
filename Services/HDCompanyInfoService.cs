@@ -28,17 +28,32 @@ namespace TechHelpDesk.Services
             return result;
         }
 
-        public Task<List<Project>> GetAllProjectsAsync(int companyId)
+        public async Task<List<Project>> GetAllProjectsAsync(int companyId)
+        {
+            List<Project> result = new();
+
+            result = await _context.Projects.Where(p => p.CompanyId == companyId)
+                                            .Include(p => p.Members)
+                                            .Include(p => p.Tickets)
+                                                .ThenInclude(t => t.Comments)
+                                            .Include(p => p.Tickets)
+                                                .ThenInclude(t => t.TicketStatus)
+                                            .Include(p => p.Tickets)
+                                                .ThenInclude(t => t.TicketPriority)
+                                            .Include(p => p.Tickets)
+                                                .ThenInclude(t => t.TicketType)
+                                            .Include(p => p.ProjectPriority)
+                                            .ToListAsync();
+
+            return result;
+        }
+
+        public async Task<List<Ticket>> GetAllTicketAsync(int ticketId)
         {
             throw new NotImplementedException();
         }
 
-        public Task<List<Ticket>> GetAllTicketAsync(int ticketId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<Company> GetCompanyInfoByIdAsync(int? companyId)
+        public async Task<Company> GetCompanyInfoByIdAsync(int? companyId)
         {
             throw new NotImplementedException();
         }
