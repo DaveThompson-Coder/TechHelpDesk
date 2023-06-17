@@ -43,6 +43,7 @@ namespace TechHelpDesk
                 .AddDefaultTokenProviders();
 
             services.AddScoped<IHDRolesService, HDRolesService>();
+            services.AddScoped<IHDCompanyInfoService, HDCompanyInfoService>();
 
             services.AddControllersWithViews();
         }

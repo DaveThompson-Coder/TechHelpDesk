@@ -21,7 +21,7 @@ namespace TechHelpDesk.Models
         public virtual ICollection<Project> Projects { get; set; }
 
         //Create a relationship to the invite
-
+        public virtual ICollection<Invite> Invites { get; set; }
 
     }
 }
