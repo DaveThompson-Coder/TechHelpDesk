@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using TechHelpDesk.Data;
 using TechHelpDesk.Models;
+using TechHelpDesk.Models.Enums;
 using TechHelpDesk.Services.Interfaces;
 
 namespace TechHelpDesk.Services
@@ -12,10 +14,12 @@ namespace TechHelpDesk.Services
     public class HDProjectService : IHDProjectService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHDRolesService _rolesService;
 
-        public HDProjectService(ApplicationDbContext context) 
+        public HDProjectService(ApplicationDbContext context, IHDRolesService rolesService) 
         {
             _context = context;
+            _rolesService = rolesService;
         }
 
         // CRUD operation - Create Method
@@ -69,9 +73,15 @@ namespace TechHelpDesk.Services
             await _context.SaveChangesAsync();
         }
 
-        public Task<List<HDUser>> GetAllProjectMembersExceptPMAsync(int projectId)
+        public async Task<List<HDUser>> GetAllProjectMembersExceptPMAsync(int projectId)
         {
-            throw new NotImplementedException();
+            List<HDUser> developers = await GetProjectMembersByRoleAsync(projectId, Roles.Developer.ToString());
+            List<HDUser> submitters = await GetProjectMembersByRoleAsync(projectId, Roles.Submitter.ToString());
+            List<HDUser> admins = await GetProjectMembersByRoleAsync(projectId, Roles.Admin.ToString());
+
+            List<HDUser> teamMembers = developers.Concat(submitters).Concat(admins).ToList();
+
+            return teamMembers;
         }
 
         public async Task<List<Project>> GetAllProjectsByCompany(int companyId)
@@ -139,9 +149,23 @@ namespace TechHelpDesk.Services
             throw new NotImplementedException();
         }
 
-        public Task<List<HDUser>> GetProjectMembersByRoleAsync(int projectId, string role)
+        public async Task<List<HDUser>> GetProjectMembersByRoleAsync(int projectId, string role)
         {
-            throw new NotImplementedException();
+            Project project = await _context.Projects
+                                            .Include(p => p.Members)
+                                            .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            List<HDUser> members = new();
+
+            foreach (var user in project.Members)
+            {
+                if (await _rolesService.IsUserInRoleAsync(user, role))
+                {
+                    members.Add(user);
+                }
+            }
+            return members;
+
         }
 
         public Task<List<HDUser>> GetSubmittersOnProjectAsync(int projectId)
@@ -187,9 +211,32 @@ namespace TechHelpDesk.Services
 
         }
 
-        public Task<List<HDUser>> GetUsersNotOnProjectAsync(int projectId, int companyId)
+        public async Task<List<HDUser>> GetUsersNotOnProjectAsync(int projectId, int companyId)
         {
-            throw new NotImplementedException();
+            List<HDUser> users = await _context.Users.Where(u => u.Projects.All(p => p.Id != projectId)).ToListAsync();
+
+            return users.Where(u => u.CompanyId == companyId).ToList();
+        }
+
+        public async Task<bool> IsAssignedProjectManagerAsync(string userId, int projectId)
+        {
+            try
+            {
+                string projectManagerId = (await GetProjectManagerAsync(projectId))?.Id;
+
+                if (projectManagerId == userId)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<bool> IsUserOnProjectAsync(string userId, int projectId)
@@ -245,9 +292,31 @@ namespace TechHelpDesk.Services
 
         }
 
-        public Task RemoveUsersFromProjectByRoleAsync(string role, int projectId)
+        public async Task RemoveUsersFromProjectByRoleAsync(string role, int projectId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                List<HDUser> members = await GetProjectMembersByRoleAsync(projectId, role);
+                Project project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+
+                foreach (HDUser hdUser in members)
+                {
+                    try
+                    {
+                        project.Members.Remove(hdUser);
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (Exception)
+                    {
+                        throw;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"*** ERROR *** - Error Removing users from project.  ---> {ex.Message}");
+                throw;
+            }
         }
 
         //CRUD operation - Update Method
