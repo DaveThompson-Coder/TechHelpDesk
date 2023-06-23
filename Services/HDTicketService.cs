@@ -5,18 +5,25 @@ using System.Linq;
 using System.Threading.Tasks;
 using TechHelpDesk.Data;
 using TechHelpDesk.Models;
+using TechHelpDesk.Models.Enums;
 using TechHelpDesk.Services.Interfaces;
 
 namespace TechHelpDesk.Services
 {
     public class HDTicketService : IHDTicketService
     {
+        //injection of Services into this Service
         private readonly ApplicationDbContext _context;
+        private readonly IHDRolesService _rolesService;
+        private readonly IHDProjectService _projectService;
 
-        //injection of Services into This Service
-        public HDTicketService(ApplicationDbContext context)
+        public HDTicketService(ApplicationDbContext context,
+                               IHDRolesService rolesService,
+                               IHDProjectService projectService)
         {
             _context = context;
+            _rolesService = rolesService;
+            _projectService = projectService;
         }
 
 
@@ -156,12 +163,20 @@ namespace TechHelpDesk.Services
 
 
 
-        public Task<List<Ticket>> GetArchivedTicketsAsync(int companyId)
+        public async Task<List<Ticket>> GetArchivedTicketsAsync(int companyId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                List<Ticket> tickets = (await GetAllTicketsByCompanyAsync(companyId)).Where(t => t.Archived == true).ToList();
+                return tickets;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
-        public Task<List<Ticket>> GetProjectTicketsByPriorityAsync(string priorityName, int companyId, int projectId)
+        public async Task<List<Ticket>> GetProjectTicketsByPriorityAsync(string priorityName, int companyId, int projectId)
         {
             throw new NotImplementedException();
         }
@@ -199,14 +214,70 @@ namespace TechHelpDesk.Services
             throw new NotImplementedException();
         }
 
-        public Task<List<Ticket>> GetTicketsByRoleAsync(string role, string userId, int companyId)
+        public async Task<List<Ticket>> GetTicketsByRoleAsync(string role, string userId, int companyId)
         {
-            throw new NotImplementedException();
+            List<Ticket> tickets = new();
+
+            try
+            {
+                if (role == Roles.Admin.ToString())
+                {
+                    tickets = await GetAllTicketsByCompanyAsync(companyId);
+                }
+                else if (role == Roles.Developer.ToString())
+                {
+                    tickets = (await GetAllTicketsByCompanyAsync(companyId)).Where(t => t.DeveloperUserId == userId).ToList();
+                }
+                else if (role == Roles.Submitter.ToString())
+                {
+                    tickets = (await GetAllTicketsByCompanyAsync(companyId)).Where(t => t.OwnerUserId == userId).ToList();
+                }
+                else if (role == Roles.ProjectManager.ToString())
+                {
+                    tickets = await GetTicketsByUserIdAsync(userId, companyId);
+                }
+
+                return tickets;
+
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
-        public Task<List<Ticket>> GetTicketsByUserIdAsync(string userId, int companyId)
+        public async Task<List<Ticket>> GetTicketsByUserIdAsync(string userId, int companyId)
         {
-            throw new NotImplementedException();
+            HDUser hdUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            List<Ticket> tickets = new();
+
+            try
+            {
+                if (await _rolesService.IsUserInRoleAsync(hdUser, Roles.Admin.ToString()))
+                {
+                    tickets = (await _projectService.GetAllProjectsByCompany(companyId)).SelectMany(p => p.Tickets).ToList();
+                }
+                else if (await _rolesService.IsUserInRoleAsync(hdUser, Roles.Developer.ToString()))
+                {
+                    tickets = (await _projectService.GetAllProjectsByCompany(companyId))
+                                                    .SelectMany(p => p.Tickets).Where(t => t.DeveloperUserId == userId).ToList();
+                }
+                else if (await _rolesService.IsUserInRoleAsync(hdUser, Roles.Submitter.ToString()))
+                {
+                    tickets = (await _projectService.GetAllProjectsByCompany(companyId))
+                                                    .SelectMany(p => p.Tickets).Where(t => t.OwnerUserId == userId).ToList();
+                }
+                else if (await _rolesService.IsUserInRoleAsync(hdUser, Roles.ProjectManager.ToString()))
+                {
+                    tickets = (await _projectService.GetUserProjectsAsync(userId)).SelectMany(t => t.Tickets).ToList();
+                }
+
+                return tickets;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<int?> LookupTicketPriorityIdAsync(string priorityName)
