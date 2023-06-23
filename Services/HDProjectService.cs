@@ -29,9 +29,35 @@ namespace TechHelpDesk.Services
             await _context.SaveChangesAsync();
         }
 
-        public Task<bool> AddProjectManagerAsync(string userId, int projectId)
+        public async Task<bool> AddProjectManagerAsync(string userId, int projectId)
         {
-            throw new NotImplementedException();
+            HDUser currentPM = await GetProjectManagerAsync(projectId);
+
+            //Remove the current Project Manager
+            if (currentPM != null)
+            {
+                try
+                {
+                    await RemoveProjectManagerAsync(projectId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error Removing User from Project. Error: {ex.Message}");
+                    return false;
+                }
+            }
+
+            //Add the new Project Manager
+            try
+            {
+                await AddProjectManagerAsync(userId, projectId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error Adding new PM. Error: {ex.Message}");
+                return false;
+            }
         }
 
         public async Task<bool> AddUserToProjectAsync(string userId, int projectId)
@@ -118,7 +144,7 @@ namespace TechHelpDesk.Services
             List<Project> projects = await GetAllProjectsByCompany(companyId);
             int priorityId = await LookupProjectPriorityId(priorityName);
 
-            return projects.Where(p = p.ProjectPriorityId == priorityId).ToList();
+            return projects.Where(p => p.ProjectPriorityId == priorityId).ToList();
         }
 
         public async Task<List<Project>> GetArchivedProjectsByCompany(int companyId)
@@ -144,9 +170,20 @@ namespace TechHelpDesk.Services
             return project;
         }
 
-        public Task<HDUser> GetProjectManagerAsync(int projectId)
+        public async Task<HDUser> GetProjectManagerAsync(int projectId)
         {
-            throw new NotImplementedException();
+            Project project = await _context.Projects
+                                            .Include(p => p.Members)
+                                            .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            foreach (HDUser member in project?.Members)     //? - Tests for null value
+            {
+                if (await _rolesService.IsUserInRoleAsync(member, Roles.ProjectManager.ToString()))
+                {
+                    return member;
+                }
+            }
+            return null;
         }
 
         public async Task<List<HDUser>> GetProjectMembersByRoleAsync(int projectId, string role)
@@ -255,13 +292,29 @@ namespace TechHelpDesk.Services
 
         public async Task<int> LookupProjectPriorityId(string priorityName)
         {
-            int priorityId = (await _context.ProjectPriorities.FirstOrDefaultAsync(p => p.Nmae == priorityName)).Id;
+            int priorityId = (await _context.ProjectPriorities.FirstOrDefaultAsync(p => p.Name == priorityName)).Id;
             return priorityId;
         }
 
-        public Task RemoveProjectManagerAsync(int projectId)
+        public async Task RemoveProjectManagerAsync(int projectId)
         {
-            throw new NotImplementedException();
+            Project project = await _context.Projects
+                                            .Include(p => p.Members)
+                                            .FirstOrDefaultAsync(p => p.Id == projectId);
+            try
+            {
+                foreach (HDUser member in project?.Members)
+                {
+                    if (await _rolesService.IsUserInRoleAsync(member, Roles.ProjectManager.ToString()))
+                    {
+                        await RemoveUserFromProjectAsync(member.Id, projectId);
+                    }
+                }
+            }
+            catch
+            {
+                throw;
+            }
         }
 
         public async Task RemoveUserFromProjectAsync(string userId, int projectId)

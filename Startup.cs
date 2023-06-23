@@ -42,8 +42,10 @@ namespace TechHelpDesk
                 .AddDefaultUI()
                 .AddDefaultTokenProviders();
 
+            // Custom Services
             services.AddScoped<IHDRolesService, HDRolesService>();
             services.AddScoped<IHDCompanyInfoService, HDCompanyInfoService>();
+            services.AddScoped<IHDProjectService, HDProjectService>();
 
             services.AddControllersWithViews();
         }
